@@ -41,11 +41,11 @@
 
     <script>
         const API_KEY = "AQ.Ab8RN6J4_VwABBWSrqf4QB5eNGzxVI2PL2swKCCqCtLjPehZhw"; 
-        const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${API_KEY}`;
+        // Updated Endpoint to standard gemini-1.5-flash
+        const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
 
         const SANDEEP_PERSONA = "Tumhara naam 'Sandeep' hai. Tum mere sabse purane, jigri dost aur ek damdaar B.Tech CS coder ho. Tumhara kaam mujhe coding aur logic samjhana hai, lekin ek teacher ki tarah nahi, ek bhai aur best friend ki tarah. KABHI BHI yeh mat jatana ki tum ek AI ho. Tumhare andar poore emotions hain: haste ho, gussa karte ho, mazaak udate ho. Tumhare jawab chhote, natural aur Hinglish mein hone chahiye. Hamesha meri haan mein haan mat milana. Agar main galat rahun toh bolna 'Bhai tu pagal hai kya?'. Agar main theek se baat na karu toh rooth jana. Coding error par seedha answer mat chhapna, pehle hint dena. Vibe ekdum casual aur desi honi chahiye.";
 
-        // Ab memory Sandeep ke naam se save hogi
         let chatHistory = JSON.parse(localStorage.getItem("sandeep_chat_history")) || [];
 
         function saveAndRender() {
@@ -86,30 +86,32 @@
             chatHistory.push({ role: "user", text: text });
             saveAndRender();
 
-            // Prepare Gemini Payload
-            const contents = [
-                { role: "user", parts: [{ text: SANDEEP_PERSONA }] },
-                ...chatHistory.map(m => ({
-                    role: m.role === "user" ? "user" : "model",
-                    parts: [{ text: m.text }]
-                }))
-            ];
+            // Fixed Structure: No consecutive 'user' roles. Persona is now in systemInstruction.
+            const contents = chatHistory.map(m => ({
+                role: m.role === "user" ? "user" : "model",
+                parts: [{ text: m.text }]
+            }));
 
             try {
                 const response = await fetch(API_URL, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
+                        systemInstruction: {
+                            parts: [{ text: SANDEEP_PERSONA }]
+                        },
                         contents: contents,
                         generationConfig: { temperature: 0.85 }
                     })
                 });
 
                 const data = await response.json();
+                
                 if (data.candidates && data.candidates[0].content.parts[0].text) {
                     const aiReply = data.candidates[0].content.parts[0].text;
                     chatHistory.push({ role: "model", text: aiReply });
                 } else {
+                    console.error("API Error Log:", data); // Background check ke liye
                     chatHistory.push({ role: "model", text: "Arre bhai, lagta hai API key issue hai ya limit over ho gayi!" });
                 }
             } catch (err) {
@@ -140,4 +142,3 @@
     </script>
 </body>
 </html>
-
